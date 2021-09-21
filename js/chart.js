@@ -1,149 +1,135 @@
-let stocks = [];
+let dataTable
+let firstRender = false;
 
-const yourDate = new Date()
-let date = yourDate.toISOString().split('T')[0]
-document.getElementById('date').value = date
-
-function setDate() {
-    date = document.getElementById('date').value
-    let table = document.querySelector("#chartTable")
-    while (table.rows.length > 0) {
-        table.deleteRow(0);
-    }
-    rock()
-}
-
-async function loadData() {
-    const response = await fetch(`https://stock-3k-be.herokuapp.com/api/stockDaily?date=${date}`, { mode: 'cors' });
-    stocks = await response.json();
-}
-
-async function createChart() {
-    stocks.forEach(stock => {
-        createChartContainer(stock);
-    });
-}
-
-function addCommas(nStr) {
-    nStr += '';
-    x = nStr.split('.');
-    x1 = x[0];
-    x2 = x.length > 1 ? '.' + x[1] : '';
-    var rgx = /(\d+)(\d{3})/;
-    while (rgx.test(x1)) {
-        x1 = x1.replace(rgx, '$1' + ',' + '$2');
-    }
-    return x1 + x2;
-}
-
-function createChartContainer(stock) {
-    var dataTable = anychart.data.table();
-    dataTable.addData(stock.daily);
-
-    var mapping = dataTable.mapAs({ 'open': 1, 'high': 2, 'low': 3, 'close': 4, 'volume': 5 });
+async function createChartContainer(array) {
+    console.log(array.length)
+    dataTable = anychart.data.table();
+    dataTable.addData(array);
+    var mapping = dataTable.mapAs();
+    mapping.addField("open", 1, "first");
+    mapping.addField("high", 2, "max");
+    mapping.addField("low", 3, "min");
+    mapping.addField("close", 4, "last");
     var chart = anychart.stock();
+
     var series = chart.plot(0).candlestick(mapping);
     series.name("Price");
-    // var title = chart.title();
-    // title.enabled(true);
-    // title.fontWeight("bold")
-    // title.text(stock.code + '\n' + stock.name);
-
-
     var pricePlot = chart.plot(0);
-    pricePlot.height(400)
-    var ema9 = pricePlot.ema(mapping, 9).series();
-    ema9.stroke('green');
+    pricePlot.height(5000)
+    var stochasticPlot = chart.plot(1);
 
-    var ema20 = pricePlot.ema(mapping, 20).series();
-    ema20.stroke('red');
-    var indicatorPlot = chart.plot(1);
-    var macdIndicator = indicatorPlot.macd(mapping);
-    var indicatorSeries = macdIndicator.macdSeries();
-    indicatorSeries.stroke("red");
+    var stochastic = stochasticPlot.stochastic(mapping, 10, "EMA", 3, "SMA", 3);
+    stochastic_k = stochastic.kSeries();
+    stochastic_k.stroke("blue");
+    stochastic_d = stochastic.dSeries();
+    stochastic_d.stroke("red");
+    stochasticPlot.height(5000)
+    stochasticPlot.width(5000)
 
-    chart.scroller(false)
-    var volumePlot = chart.plot(2);
-    var volumeMa = volumePlot.volumeMa(mapping, 9, "sma", "column", "line");
-    volumeMa.volumeSeries().fallingFill("red");
-    volumeMa.volumeSeries().fallingStroke("red");
-    volumeMa.volumeSeries().risingFill("green");
-    volumeMa.volumeSeries().risingStroke("green");
+    // var iterator = stochastic_k.data().createSelectable().getIterator()
+    // while (iterator.advance()) {
+    //     console.log(iterator.getKey());
+    //     console.log(iterator.get('value'));
+    // }
 
-    // modify the color of candlesticks making them black and white
-    series.fallingFill("red");
-    series.fallingStroke("red");
-    series.risingFill("green");
-    series.risingStroke("green");
-    // set the container id
-    chart.container(stock.code);
-
-    // draw the chart
+    chart.container('container')
     chart.draw();
     return chart
 }
 
-function isEven(number) {
-    return number % 2 === 0
-}
+function testWS() {
+    let ws = new WebSocket('wss://eqonex.com/wsapi');
 
-function createInfoDiv(stock) {
-    let mainDiv = document.createElement("div")
-
-    let stockInfoDiv = document.createElement("div")
-    stockInfoDiv.innerText = stock.code + " - " + stock.name + "\n"
-    stockInfoDiv.className = "info"
-
-    let priceInfoP = document.createElement("p")
-    priceInfoP.innerText = `${addCommas(stock.price)} (${stock.change} ${stock.perChange}%) - ${addCommas(stock.mTotalVol)}`
-    priceInfoP.className = getPricePerChangeColor(stock.perChange)
-
-    let patternDiv = document.createElement("div")
-    patternDiv.textContent = stock.pattern
-    patternDiv.className = "px-2 inline-flex text-lg text-mid leading-5 font-semibold rounded-full bg-green-100 text-green-800"
-
-    stockInfoDiv.append(priceInfoP)
-    mainDiv.append(stockInfoDiv)
-    mainDiv.append(patternDiv)
-    return mainDiv
-}
-
-function getPricePerChangeColor(perChange) {
-    if (perChange >= 6.5) return "pricePurple"
-    if (perChange > 0) return "priceGreen"
-    if (perChange == 0) return "priceOrange"
-    if (perChange < 6.5) return "priceRed"
-    return "priceBlue"
-}
-
-async function addChart() {
-    let table = document.querySelector("#chartTable")
-    let tr
-    let count = 0
-    stocks.forEach(stock => {
-        if (isEven(count)) {
-            tr = document.createElement("tr")
+    function heartbeat() {
+        jsonString = {
+            heartbeat: new Date().getTime()
         }
-        // let info = document.createElement("div");
-        // info.textContent = stock.pattern
-        // info.className = "px-2 inline-flex text-lg text-mid leading-5 font-semibold rounded-full bg-green-100 text-green-800"
-        let tdChart = document.createElement("td")
-        let chartDiv = document.createElement("div")
-        chartDiv.id = stock.code
-        chartDiv.className = "chart"
+        ws.send(JSON.stringify(jsonString))
+    }
 
-        tdChart.append(createInfoDiv(stock))
-        tdChart.append(chartDiv)
-        tr.append(tdChart)
-        table.append(tr)
-        count++
-    });
+    ws.onopen = function() {
+        let requestString = 'CHART_' + randomString(10)
+        let jsonString = {
+            requestId: requestString,
+            event: 'S',
+            types: [4],
+            symbols: ["BTC/USDC"],
+            timespan: 4
+        }
+        console.log('sending ', jsonString)
+        ws.send(JSON.stringify(jsonString))
+        setInterval(function() { heartbeat() }, 10000);
+    }
+
+    function randomString(len) {
+        charSet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        var randomString = '';
+        for (var i = 0; i < len; i++) {
+            var randomPoz = Math.floor(Math.random() * charSet.length);
+            randomString += charSet.substring(randomPoz, randomPoz + 1);
+        }
+        return randomString;
+    }
+
+    ws.onmessage = async function(msg) {
+        let data = JSON.parse(msg.data)
+        console.log(data)
+        if (data.o) {
+            if (!firstRender) {
+                let array = await collectData(data)
+                await createChartContainer(array)
+                firstRender = true;
+            } else {
+                appendData(data)
+            }
+        }
+    }
+
+    ws.onerror = function(msg) {
+        console.log(msg.data)
+    };
+
+    ws.onclose = function() {
+        console.log('closed')
+    };
 }
 
-async function rock() {
-    await loadData()
-    await addChart()
-    await createChart()
+function appendData(data) {
+    let latestData = [
+        []
+    ]
+    latestData[0].push(new Date().getTime())
+    latestData[0].push(roundDecimal(data.o))
+    latestData[0].push(roundDecimal(data.h))
+    latestData[0].push(roundDecimal(data.l))
+    latestData[0].push(roundDecimal(data.c))
+    console.log(latestData[0])
+    dataTable.addData(latestData)
 }
 
-rock()
+async function collectData(data) {
+    let array = []
+    let latestData = []
+    if (data.o) {
+        latestData.push(new Date().getTime())
+        latestData.push(roundDecimal(data.o))
+        latestData.push(roundDecimal(data.h))
+        latestData.push(roundDecimal(data.l))
+        latestData.push(roundDecimal(data.c))
+        array.push(latestData)
+        await Promise.all(data.chart.map(async element => {
+            let data = []
+            data.push(element[0])
+            data.push(element[1] / 100)
+            data.push(element[2] / 100)
+            data.push(element[3] / 100)
+            data.push(element[4] / 100)
+            array.push(data)
+        }))
+    }
+    return array
+}
+
+function roundDecimal(num) { return Math.round(num * 100) / 100; }
+
+testWS()
