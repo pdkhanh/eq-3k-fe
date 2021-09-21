@@ -14,8 +14,6 @@ async function createChartContainer(array) {
 
     var series = chart.plot(0).line(mapping);
     series.name("Price");
-    var pricePlot = chart.plot(0);
-    // pricePlot.height(5000)
     var stochasticPlot = chart.plot(1);
 
     var stochastic = stochasticPlot.stochastic(mapping, 10, "EMA", 3, "SMA", 3);
@@ -23,8 +21,6 @@ async function createChartContainer(array) {
     stochastic_k.stroke("blue");
     stochastic_d = stochastic.dSeries();
     stochastic_d.stroke("red");
-    // stochasticPlot.height(5000)
-    // stochasticPlot.width(5000)
 
     // var iterator = stochastic_k.data().createSelectable().getIterator()
     // while (iterator.advance()) {
