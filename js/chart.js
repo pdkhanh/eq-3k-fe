@@ -2,7 +2,6 @@ let dataTable
 let firstRender = false;
 
 async function createChartContainer(array) {
-    console.log(array.length)
     dataTable = anychart.data.table();
     dataTable.addData(array);
     var mapping = dataTable.mapAs();
@@ -10,12 +9,13 @@ async function createChartContainer(array) {
     mapping.addField("high", 2, "max");
     mapping.addField("low", 3, "min");
     mapping.addField("close", 4, "last");
+    mapping.addField("value", 4, "last");
     var chart = anychart.stock();
 
-    var series = chart.plot(0).candlestick(mapping);
+    var series = chart.plot(0).line(mapping);
     series.name("Price");
     var pricePlot = chart.plot(0);
-    pricePlot.height(5000)
+    // pricePlot.height(5000)
     var stochasticPlot = chart.plot(1);
 
     var stochastic = stochasticPlot.stochastic(mapping, 10, "EMA", 3, "SMA", 3);
@@ -23,8 +23,8 @@ async function createChartContainer(array) {
     stochastic_k.stroke("blue");
     stochastic_d = stochastic.dSeries();
     stochastic_d.stroke("red");
-    stochasticPlot.height(5000)
-    stochasticPlot.width(5000)
+    // stochasticPlot.height(5000)
+    // stochasticPlot.width(5000)
 
     // var iterator = stochastic_k.data().createSelectable().getIterator()
     // while (iterator.advance()) {
@@ -56,7 +56,6 @@ function testWS() {
             symbols: ["BTC/USDC"],
             timespan: 4
         }
-        console.log('sending ', jsonString)
         ws.send(JSON.stringify(jsonString))
         setInterval(function() { heartbeat() }, 10000);
     }
@@ -73,7 +72,6 @@ function testWS() {
 
     ws.onmessage = async function(msg) {
         let data = JSON.parse(msg.data)
-        console.log(data)
         if (data.o) {
             if (!firstRender) {
                 let array = await collectData(data)
@@ -103,7 +101,6 @@ function appendData(data) {
     latestData[0].push(roundDecimal(data.h))
     latestData[0].push(roundDecimal(data.l))
     latestData[0].push(roundDecimal(data.c))
-    console.log(latestData[0])
     dataTable.addData(latestData)
 }
 
